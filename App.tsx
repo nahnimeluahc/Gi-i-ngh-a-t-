@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { extractTextFromImage, explainForKids, generateIllustration, generateQuiz, generateStoryFromPrompt, generateWritingSupport, generateSpeech, searchStoryVideos, searchRealImage, generateStoryScenes } from './services/geminiService';
 import { DefinitionData, AppState, ModuleType, QuizQuestion, WritingGuide, GradeLevel, SearchResult } from './types';
-import { IconCamera, IconTrash, IconSearch, IconRefresh, IconBook, IconPen, IconStar, IconChat, IconCheck, IconX, IconStop, IconMagic, IconSettings, IconSun, IconMoon, IconLaptop, IconImage, IconAppLogo } from './components/Icons';
+import { IconCamera, IconTrash, IconSearch, IconRefresh, IconBook, IconPen, IconStar, IconChat, IconCheck, IconX, IconStop, IconMagic, IconSettings, IconSun, IconMoon, IconLaptop, IconImage, IconAppLogo, IconMobile, IconTablet } from './components/Icons';
 import DefinitionModal from './components/DefinitionModal';
 import SmartGestureModal from './components/SmartGestureModal';
 
@@ -110,6 +110,7 @@ interface SettingsModalProps {
     autoExplain: boolean;
     themeMode: 'light' | 'dark' | 'system';
     background: string;
+    viewMode: 'desktop' | 'tablet' | 'mobile';
   };
   onUpdateSettings: (key: string, value: any) => void;
 }
@@ -133,6 +134,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpda
         </div>
         <div className="p-6 space-y-6">
           
+          {/* View Mode Section */}
+          <div>
+            <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Chế độ hiển thị</h4>
+            <div className="grid grid-cols-3 gap-2">
+              <button 
+                onClick={() => onUpdateSettings('viewMode', 'mobile')}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'mobile' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+              >
+                <IconMobile className="w-6 h-6 mb-1"/>
+                <span className="text-xs font-bold">Điện thoại</span>
+              </button>
+              <button 
+                onClick={() => onUpdateSettings('viewMode', 'tablet')}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'tablet' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+              >
+                <IconTablet className="w-6 h-6 mb-1"/>
+                <span className="text-xs font-bold">Tablet</span>
+              </button>
+              <button 
+                onClick={() => onUpdateSettings('viewMode', 'desktop')}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'desktop' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+              >
+                <IconLaptop className="w-6 h-6 mb-1"/>
+                <span className="text-xs font-bold">Máy tính</span>
+              </button>
+            </div>
+          </div>
+
           {/* Theme Section */}
           <div>
             <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Giao diện (Sáng / Tối)</h4>
@@ -265,6 +294,10 @@ const ReadingModule = ({ onLookup, isLookupMode, setLookupMode, grade, settings,
   // Paste Handler for Reading
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
+      // Check if we are focusing an input, if so, don't intercept standard paste
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
@@ -321,7 +354,7 @@ const ReadingModule = ({ onLookup, isLookupMode, setLookupMode, grade, settings,
               </div>
             )}
             <textarea 
-              className="flex-1 min-h-[300px] p-4 border border-gray-200 dark:border-gray-600 rounded-xl w-full resize-none focus:ring-2 focus:ring-brand-200 outline-none text-base bg-white dark:bg-gray-900 dark:text-white" 
+              className="flex-1 min-h-[300px] p-4 border border-gray-200 dark:border-gray-600 rounded-xl w-full resize-none focus:ring-2 focus:ring-brand-200 outline-none text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-white" 
               placeholder="Hoặc gõ/dán văn bản vào đây..." 
               value={text} onChange={(e) => setText(e.target.value)} 
             />
@@ -332,14 +365,14 @@ const ReadingModule = ({ onLookup, isLookupMode, setLookupMode, grade, settings,
       <div className="bg-paper dark:bg-gray-800 rounded-2xl p-6 shadow border border-yellow-100 dark:border-gray-700 flex flex-col relative h-fit min-h-[500px] transition-colors">
         <div className="flex justify-between items-center mb-4 flex-shrink-0 sticky top-0 bg-paper dark:bg-gray-800 z-10 py-2 border-b dark:border-gray-700">
            <h3 className="font-bold text-brand-600 dark:text-brand-400 flex items-center"><IconBook className="w-5 h-5 mr-2"/> Đọc & Giải Nghĩa</h3>
-           <button onClick={() => { setLookupMode(!isLookupMode); playSFX('click'); }} className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center space-x-1 ${isLookupMode ? 'bg-primary-100 text-primary-700 ring-2 ring-primary-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+           <button onClick={() => { setLookupMode(!isLookupMode); playSFX('click'); }} className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center space-x-1 ${isLookupMode ? 'bg-yellow-500 text-white shadow-md hover:bg-yellow-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
              <IconSearch className="w-3 h-3"/>
-             <span className="dark:text-gray-300">{isLookupMode ? 'Tra từ: BẬT' : 'Tra từ: TẮT'}</span>
+             <span>{isLookupMode ? 'Tra từ: BẬT' : 'Tra từ: TẮT'}</span>
            </button>
         </div>
         <div 
           ref={textRef} onMouseUp={handleMouseUp}
-          className={`flex-1 prose max-w-none ${textSizeClass} whitespace-pre-wrap dark:text-gray-100 ${isLookupMode ? 'cursor-help selection:bg-yellow-200 selection:text-black' : ''}`}
+          className={`flex-1 prose max-w-none ${textSizeClass} whitespace-pre-wrap text-gray-800 dark:text-gray-100 ${isLookupMode ? 'cursor-help selection:bg-yellow-200 selection:text-black' : ''}`}
           style={{ fontFamily: '"Quicksand", sans-serif' }}
         >
           {isLoading ? (
@@ -498,7 +531,7 @@ const StoryModule = ({ grade, settings, playSFX }: { grade: number, settings: an
                 <label className="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">Chủ đề hoặc Nội dung truyện:</label>
                 <textarea 
                   value={topic} onChange={(e) => setTopic(e.target.value)}
-                  className={`w-full p-4 rounded-xl border border-gray-200 dark:border-gray-600 focus:border-brand-500 outline-none h-32 resize-none bg-white dark:bg-gray-900 dark:text-white ${textSizeClass}`}
+                  className={`w-full p-4 rounded-xl border border-gray-200 dark:border-gray-600 focus:border-brand-500 outline-none h-32 resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white ${textSizeClass}`}
                   placeholder="Nhập chủ đề để AI kể HOẶC dán nội dung truyện trong sách vào đây để AI đọc..."
                 />
              </div>
@@ -676,8 +709,8 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX }: { grade:
   };
 
   return (
-    <div className="h-full relative">
-       <div className="max-w-4xl mx-auto space-y-6 pb-32">
+    <div className="h-full flex flex-col relative">
+       <div className="max-w-4xl mx-auto space-y-6 pb-20 flex-1 w-full">
           {/* Settings Panel */}
           <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-brand-100 dark:border-gray-700 mb-6 space-y-4 transition-colors">
              <div className="flex justify-between items-center">
@@ -686,11 +719,11 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX }: { grade:
              </div>
 
              {/* Topic Input */}
-             <div>
+             <div className="relative z-0">
                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Chủ đề (Bắt buộc)</label>
                <input 
                  value={topic} onChange={e => setTopic(e.target.value)}
-                 className={`w-full p-3 rounded-xl border border-gray-200 dark:border-gray-600 outline-none focus:ring-2 focus:ring-brand-200 bg-white dark:bg-gray-900 dark:text-white transition ${textSizeClass}`}
+                 className={`w-full p-3 rounded-xl border border-gray-200 dark:border-gray-600 outline-none focus:ring-2 focus:ring-brand-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition ${textSizeClass}`}
                  placeholder={suggestedTopics.length > 0 ? `Ví dụ: ${suggestedTopics[0]}...` : `Ví dụ: Từ láy, Danh từ...`}
                />
                {/* Suggested Tags */}
@@ -712,12 +745,12 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX }: { grade:
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Text Paste Area */}
-                <div className="flex flex-col">
+                <div className="flex flex-col relative z-0">
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Dán văn bản / đề bài (Tùy chọn)</label>
                   <textarea 
                     value={contextText}
                     onChange={e => setContextText(e.target.value)}
-                    className={`flex-1 p-3 rounded-xl border border-gray-200 dark:border-gray-600 outline-none focus:ring-2 focus:ring-brand-200 resize-none h-32 bg-white dark:bg-gray-900 dark:text-white ${textSizeClass}`}
+                    className={`flex-1 p-3 rounded-xl border border-gray-200 dark:border-gray-600 outline-none focus:ring-2 focus:ring-brand-200 resize-none h-32 bg-white dark:bg-gray-900 text-gray-900 dark:text-white ${textSizeClass}`}
                     placeholder="Dán đoạn văn hoặc nội dung câu hỏi vào đây (Ctrl+V)..."
                   />
                 </div>
@@ -778,14 +811,14 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX }: { grade:
                       {q.options.map((opt, oIdx) => {
                          const isSelected = answers[q.id] === oIdx;
                          const isCorrect = q.correctAnswer === oIdx;
-                         let bgClass = "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600";
+                         let bgClass = "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white";
                          
                          if (submitted) {
-                           if (isCorrect) bgClass = "bg-green-100 dark:bg-green-900 border-green-300 ring-1 ring-green-500";
-                           else if (isSelected) bgClass = "bg-red-100 dark:bg-red-900 border-red-300";
-                           else bgClass = "opacity-50";
+                           if (isCorrect) bgClass = "bg-green-100 dark:bg-green-900 border-green-300 ring-1 ring-green-500 text-green-900 dark:text-green-100";
+                           else if (isSelected) bgClass = "bg-red-100 dark:bg-red-900 border-red-300 text-red-900 dark:text-red-100";
+                           else bgClass = "opacity-50 dark:text-gray-400";
                          } else if (isSelected) {
-                           bgClass = "bg-primary-50 dark:bg-primary-900 border-primary-300 ring-1 ring-primary-500";
+                           bgClass = "bg-primary-50 dark:bg-primary-900 border-primary-300 ring-1 ring-primary-500 text-primary-900 dark:text-primary-100";
                          }
 
                          return (
@@ -793,7 +826,7 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX }: { grade:
                              key={oIdx}
                              disabled={submitted}
                              onClick={() => handleAnswer(q.id, oIdx)}
-                             className={`p-3 rounded-xl border text-left transition dark:text-white ${bgClass} ${textSizeClass}`}
+                             className={`p-3 rounded-xl border text-left transition ${bgClass} ${textSizeClass}`}
                            >
                              {opt}
                            </button>
@@ -819,8 +852,8 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX }: { grade:
        </div>
        
        {questions.length > 0 && !submitted && (
-         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none w-full flex justify-center">
-            <button onClick={handleSubmit} className="pointer-events-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-12 rounded-full shadow-lg text-lg animate-bounce-slow border-4 border-white">
+         <div className="sticky bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-t dark:border-gray-700 z-30 flex justify-center w-full">
+            <button onClick={handleSubmit} className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-12 rounded-full shadow-lg text-lg animate-bounce-slow border-4 border-white">
                Nộp bài ngay
             </button>
          </div>
@@ -894,7 +927,7 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX }: { grade:
              <div className="flex-1 flex flex-col space-y-3">
                 <div>
                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Dạng bài</label>
-                   <select value={type} onChange={e => setType(e.target.value)} className={`w-full p-2 border rounded-lg mt-1 outline-none bg-white dark:bg-gray-900 dark:text-white dark:border-gray-600 ${textSizeClass}`}>
+                   <select value={type} onChange={e => setType(e.target.value)} className={`w-full p-2 border rounded-lg mt-1 outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white dark:border-gray-600 ${textSizeClass}`}>
                       {writingTypes.map(t => <option key={t} value={t}>{t}</option>)}
                       {!writingTypes.includes(type) && <option value={type}>{type}</option>}
                    </select>
@@ -931,7 +964,7 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX }: { grade:
                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Đề bài chi tiết</label>
                    <textarea 
                       value={topic} onChange={e => setTopic(e.target.value)}
-                      className={`w-full p-2 border rounded-lg mt-1 h-24 resize-none outline-none bg-white dark:bg-gray-900 dark:text-white dark:border-gray-600 ${textSizeClass}`}
+                      className={`w-full p-2 border rounded-lg mt-1 h-24 resize-none outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white dark:border-gray-600 ${textSizeClass}`}
                       placeholder="VD: Tả con mèo nhà em..."
                    />
                 </div>
@@ -965,13 +998,13 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX }: { grade:
                 {/* Result Block 1: Outline or Structure Guide */}
                 <div>
                    <h4 className="font-bold text-brand-600 dark:text-brand-400 text-lg mb-2">📌 {titles.outline}</h4>
-                   <div className={`bg-white dark:bg-gray-700 dark:text-white p-4 rounded-xl border border-gray-100 dark:border-gray-600 whitespace-pre-wrap ${proseClass}`}>{result.outline}</div>
+                   <div className={`bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4 rounded-xl border border-gray-100 dark:border-gray-600 whitespace-pre-wrap ${proseClass}`}>{result.outline}</div>
                 </div>
 
                 {/* Result Block 2: Main Content (Sample Text) */}
                 <div>
                    <h4 className="font-bold text-green-600 dark:text-green-400 text-lg mb-2">✨ {titles.sample}</h4>
-                   <div className={`bg-green-50 dark:bg-green-900 p-4 rounded-xl border border-green-100 dark:border-green-800 italic text-gray-700 dark:text-gray-200 ${proseClass}`}>{result.sampleText}</div>
+                   <div className={`bg-green-50 dark:bg-green-900 p-4 rounded-xl border border-green-100 dark:border-green-800 italic text-gray-700 dark:text-green-100 ${proseClass}`}>{result.sampleText}</div>
                 </div>
                 
                 {/* Tips */}
@@ -1005,10 +1038,11 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState({
     fontSize: 'normal' as 'normal' | 'large',
     soundEffects: true,
-    bgMusic: false, // Default off so it doesn't blast immediately
+    bgMusic: false,
     autoExplain: true,
     themeMode: 'light' as 'light' | 'dark' | 'system',
-    background: 'bg-brand-50'
+    background: 'bg-brand-50',
+    viewMode: 'desktop' as 'desktop' | 'tablet' | 'mobile',
   });
 
   // Audio Refs
@@ -1119,105 +1153,142 @@ const App: React.FC = () => {
   ];
 
   const currentGradeData = CURRICULUM_DATA[grade];
+  
+  // Logic to determine layout based on View Mode
+  const isDesktop = settings.viewMode === 'desktop';
+  const isMobileView = settings.viewMode === 'mobile';
+  const isTabletView = settings.viewMode === 'tablet';
+
+  const containerClasses = isDesktop 
+    ? "w-full h-full" 
+    : isTabletView 
+        ? "w-[768px] h-[1024px] rounded-[30px] shadow-2xl border-8 border-gray-800 overflow-hidden" 
+        : "w-[375px] h-[812px] rounded-[40px] shadow-2xl border-8 border-gray-800 overflow-hidden";
+
+  const wrapperClasses = isDesktop 
+    ? "h-screen w-full"
+    : "h-screen w-full bg-gray-900 flex items-center justify-center p-4 transition-all duration-500";
+
+  // Force layout based on simulation mode, not just viewport width
+  const layoutClasses = (isMobileView || isTabletView) 
+     ? "flex-col" // Force column layout for simulated mobile/tablet
+     : "md:flex-row flex-col"; // Normal responsive for desktop
+
+  const navClasses = (isMobileView || isTabletView)
+     ? "w-full flex-row border-t order-2 py-2" // Bottom nav for simulated mobile
+     : "md:w-24 md:flex-col flex-row md:border-r border-t md:border-t-0 md:order-1 order-2"; // Sidebar for desktop
+
+  const navItemClasses = (isMobileView || isTabletView)
+     ? "py-2"
+     : "md:py-4 p-2";
 
   return (
-    <div className={`h-screen flex flex-col md:flex-row text-slate-800 dark:text-white font-sans overflow-hidden transition-colors duration-300 ${settings.background} dark:bg-gray-900`}>
+    <div className={`${wrapperClasses} font-sans transition-colors duration-300 ${isDesktop ? settings.background : ''}`}>
       <GlobalStyles />
-      {/* Sidebar (Desktop) / Bottom Nav (Mobile) */}
-      <nav className="bg-white dark:bg-gray-800 md:w-24 md:flex-col flex-row flex md:border-r border-t md:border-t-0 border-brand-200 dark:border-gray-700 z-50 shadow-sm flex-shrink-0 order-2 md:order-1 transition-colors">
-        <div className="hidden md:flex flex-col items-center py-6 text-brand-600 dark:text-brand-400">
-           <div className="bg-primary-500 text-white p-2 rounded-xl mb-2"><IconAppLogo className="w-8 h-8"/></div>
-        </div>
-        <div className="flex-1 flex md:flex-col justify-around md:justify-start md:space-y-4 md:pt-4">
-           {menuItems.map(item => (
-             <button
-               key={item.id}
-               onClick={() => { setActiveModule(item.id as ModuleType); playSFX('click'); }}
-               className={`flex flex-col items-center justify-center p-2 w-full md:w-auto md:py-4 transition-colors relative group
-                 ${activeModule === item.id ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 hover:text-brand-500 dark:hover:text-brand-300'}`}
-             >
-               <item.icon className={`w-6 h-6 md:w-8 md:h-8 mb-1 ${activeModule === item.id ? 'fill-current opacity-20' : ''}`}/>
-               <span className="text-[10px] md:text-xs font-bold text-center leading-tight">{item.label}</span>
-               {activeModule === item.id && <div className="absolute top-0 md:left-0 md:w-1 md:h-full w-full h-1 bg-primary-500"/>}
-             </button>
-           ))}
-        </div>
-        
-        {/* Settings Button - Desktop: Bottom of column, Mobile: Part of row (but styled to fit) */}
-        <div className="flex md:flex-col justify-center items-center md:pb-6 md:pt-2 border-l md:border-l-0 md:border-t border-gray-100 dark:border-gray-700 md:mt-auto px-2">
-             <button
-               onClick={() => { setShowSettings(true); playSFX('click'); }}
-               className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-               title="Cài đặt"
-             >
-               <IconSettings className="w-6 h-6 md:w-7 md:h-7 mb-1"/>
-               <span className="text-[10px] font-bold text-center leading-tight md:block hidden">Cài đặt</span>
-             </button>
-        </div>
-      </nav>
-
-      {/* Main Area */}
-      <main className="flex-1 flex flex-col h-full order-1 md:order-2 overflow-hidden relative">
-        {/* Header */}
-        <header className="h-16 bg-white dark:bg-gray-800 border-b border-brand-100 dark:border-gray-700 flex items-center px-4 md:px-6 justify-between flex-shrink-0 transition-colors">
-          <div className="flex items-center overflow-hidden">
-             <h1 className="text-lg md:text-2xl font-bold text-brand-700 dark:text-brand-400 truncate mr-4">
-                {activeModule === 'READING' && '📖 Cùng Em Đọc & Giải Nghĩa'}
-                {activeModule === 'STORY' && '✨ Cùng em kể chuyện'}
-                {activeModule === 'EXERCISE' && '✅ Từ và câu'}
-                {activeModule === 'WRITING' && '📝 Tập Làm Văn'}
-             </h1>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <span className="text-xs md:text-sm font-bold text-gray-500 dark:text-gray-400 hidden md:block">
-              Tác giả: Châu Lê Minh An
-            </span>
-            {/* Grade Selector */}
-            <div className="flex items-center bg-brand-50 dark:bg-gray-700 rounded-lg p-1 border border-brand-100 dark:border-gray-600 flex-shrink-0">
-               <span className="text-xs font-bold text-brand-600 dark:text-brand-300 px-2 hidden sm:block">Lớp:</span>
-               {[1,2,3,4,5].map(g => (
-                  <button 
-                    key={g} 
-                    onClick={() => { setGrade(g as GradeLevel); playSFX('click'); }}
-                    className={`w-8 h-8 rounded-md text-sm font-bold transition flex items-center justify-center ${grade === g ? 'bg-brand-500 text-white shadow-sm' : 'text-brand-400 dark:text-gray-400 hover:bg-brand-100 dark:hover:bg-gray-600'}`}
-                  >
-                    {g}
-                  </button>
-               ))}
-            </div>
-          </div>
-        </header>
-
-        {/* Content Container - FULL SCROLLABLE */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar scroll-smooth" id="main-scroll-container">
-           {activeModule === 'READING' && <ReadingModule onLookup={handleLookup} isLookupMode={isLookupMode} setLookupMode={setLookupMode} grade={grade} settings={settings} playSFX={playSFX} />}
-           {activeModule === 'STORY' && <StoryModule grade={grade} settings={settings} playSFX={playSFX} />}
-           {activeModule === 'EXERCISE' && <QuizModule grade={grade} settings={settings} suggestedTopics={currentGradeData?.quizTopics} playSFX={playSFX} />}
-           {activeModule === 'WRITING' && <WritingModule grade={grade} settings={settings} writingTypes={currentGradeData?.writingTypes} playSFX={playSFX} />}
-        </div>
-      </main>
-
-      {/* Dictionary Modal */}
-      {(defData || isLookupLoading) && (
-        <DefinitionModal 
-          data={defData} 
-          imageUrl={defImg}
-          isLoading={isLookupLoading} 
-          position={modalPos} 
-          onClose={() => { setDefData(null); setIsLookupLoading(false); playSFX('click'); }}
-          onImageError={handleImageError}
-        />
-      )}
       
-      {/* Settings Modal */}
-      {showSettings && (
-        <SettingsModal 
-          settings={settings}
-          onUpdateSettings={(k, v) => { handleUpdateSettings(k, v); if(k !== 'bgMusic' && k !== 'soundEffects') playSFX('click'); }}
-          onClose={() => { setShowSettings(false); playSFX('click'); }}
-        />
-      )}
+      <div className={`${containerClasses} flex flex-col ${isDesktop ? '' : 'bg-white dark:bg-gray-900'} transition-all duration-300 relative`}>
+          {/* Main Layout */}
+          <div className={`flex flex-1 h-full overflow-hidden ${layoutClasses} ${settings.background} dark:bg-gray-900 transition-colors`}>
+            
+            {/* Navigation */}
+            <nav className={`bg-white dark:bg-gray-800 flex z-50 shadow-sm flex-shrink-0 border-brand-200 dark:border-gray-700 transition-colors ${navClasses}`}>
+                <div className={`${(isMobileView || isTabletView) ? 'hidden' : 'hidden md:flex'} flex-col items-center py-6 text-brand-600 dark:text-brand-400`}>
+                   <div className="bg-primary-500 text-white p-2 rounded-xl mb-2"><IconAppLogo className="w-8 h-8"/></div>
+                </div>
+                
+                <div className={`flex-1 flex justify-around ${(isMobileView || isTabletView) ? '' : 'md:flex-col md:justify-start md:space-y-4 md:pt-4'}`}>
+                   {menuItems.map(item => (
+                     <button
+                       key={item.id}
+                       onClick={() => { setActiveModule(item.id as ModuleType); playSFX('click'); }}
+                       className={`flex flex-col items-center justify-center w-full ${(isMobileView || isTabletView) ? 'w-auto' : 'md:w-auto'} transition-colors relative group
+                         ${activeModule === item.id ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 hover:text-brand-500 dark:hover:text-brand-300'}
+                         ${navItemClasses}`}
+                     >
+                       <item.icon className={`w-6 h-6 ${(isMobileView || isTabletView) ? '' : 'md:w-8 md:h-8'} mb-1 ${activeModule === item.id ? 'fill-current opacity-20' : ''}`}/>
+                       <span className="text-[10px] md:text-xs font-bold text-center leading-tight">{item.label}</span>
+                       {activeModule === item.id && <div className={`absolute bg-primary-500 ${(isMobileView || isTabletView) ? 'top-0 w-full h-1' : 'top-0 w-full h-1 md:left-0 md:w-1 md:h-full'}`}/>}
+                     </button>
+                   ))}
+                </div>
+                
+                {/* Settings Button */}
+                <div className={`flex justify-center items-center px-2 border-gray-100 dark:border-gray-700 ${(isMobileView || isTabletView) ? 'border-l' : 'md:pb-6 md:pt-2 border-l md:border-l-0 md:border-t md:mt-auto'}`}>
+                     <button
+                       onClick={() => { setShowSettings(true); playSFX('click'); }}
+                       className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                       title="Cài đặt"
+                     >
+                       <IconSettings className={`w-6 h-6 ${(isMobileView || isTabletView) ? '' : 'md:w-7 md:h-7'} mb-1`}/>
+                       <span className={`text-[10px] font-bold text-center leading-tight ${(isMobileView || isTabletView) ? 'hidden' : 'md:block hidden'}`}>Cài đặt</span>
+                     </button>
+                </div>
+            </nav>
+
+            {/* Main Content Area */}
+            <main className={`flex-1 flex flex-col h-full overflow-hidden relative ${(isMobileView || isTabletView) ? 'order-1' : 'order-1 md:order-2'}`}>
+                {/* Header */}
+                <header className="h-16 bg-white dark:bg-gray-800 border-b border-brand-100 dark:border-gray-700 flex items-center px-4 md:px-6 justify-between flex-shrink-0 transition-colors">
+                  <div className="flex items-center overflow-hidden">
+                     <h1 className="text-lg md:text-2xl font-bold text-brand-700 dark:text-brand-400 truncate mr-4">
+                        {activeModule === 'READING' && '📖 Cùng Em Đọc & Giải Nghĩa'}
+                        {activeModule === 'STORY' && '✨ Cùng em kể chuyện'}
+                        {activeModule === 'EXERCISE' && '✅ Từ và câu'}
+                        {activeModule === 'WRITING' && '📝 Tập Làm Văn'}
+                     </h1>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs md:text-sm font-bold text-gray-500 dark:text-gray-400 ${(isMobileView) ? 'hidden' : 'hidden md:block'}`}>
+                      Tác giả: Châu Lê Minh An
+                    </span>
+                    {/* Grade Selector */}
+                    <div className="flex items-center bg-brand-50 dark:bg-gray-700 rounded-lg p-1 border border-brand-100 dark:border-gray-600 flex-shrink-0">
+                       <span className={`text-xs font-bold text-brand-600 dark:text-brand-300 px-2 ${(isMobileView) ? 'hidden' : 'hidden sm:block'}`}>Lớp:</span>
+                       {[1,2,3,4,5].map(g => (
+                          <button 
+                            key={g} 
+                            onClick={() => { setGrade(g as GradeLevel); playSFX('click'); }}
+                            className={`w-8 h-8 rounded-md text-sm font-bold transition flex items-center justify-center ${grade === g ? 'bg-brand-500 text-white shadow-sm' : 'text-brand-400 dark:text-gray-400 hover:bg-brand-100 dark:hover:bg-gray-600'}`}
+                          >
+                            {g}
+                          </button>
+                       ))}
+                    </div>
+                  </div>
+                </header>
+
+                {/* Content Container - FULL SCROLLABLE */}
+                <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar scroll-smooth" id="main-scroll-container">
+                   {activeModule === 'READING' && <ReadingModule onLookup={handleLookup} isLookupMode={isLookupMode} setLookupMode={setLookupMode} grade={grade} settings={settings} playSFX={playSFX} />}
+                   {activeModule === 'STORY' && <StoryModule grade={grade} settings={settings} playSFX={playSFX} />}
+                   {activeModule === 'EXERCISE' && <QuizModule grade={grade} settings={settings} suggestedTopics={currentGradeData?.quizTopics} playSFX={playSFX} />}
+                   {activeModule === 'WRITING' && <WritingModule grade={grade} settings={settings} writingTypes={currentGradeData?.writingTypes} playSFX={playSFX} />}
+                </div>
+            </main>
+          </div>
+
+          {/* Dictionary Modal */}
+          {(defData || isLookupLoading) && (
+            <DefinitionModal 
+              data={defData} 
+              imageUrl={defImg}
+              isLoading={isLookupLoading} 
+              position={modalPos} 
+              onClose={() => { setDefData(null); setIsLookupLoading(false); playSFX('click'); }}
+              onImageError={handleImageError}
+            />
+          )}
+          
+          {/* Settings Modal */}
+          {showSettings && (
+            <SettingsModal 
+              settings={settings}
+              onUpdateSettings={(k, v) => { handleUpdateSettings(k, v); if(k !== 'bgMusic' && k !== 'soundEffects') playSFX('click'); }}
+              onClose={() => { setShowSettings(false); playSFX('click'); }}
+            />
+          )}
+      </div>
     </div>
   );
 };
