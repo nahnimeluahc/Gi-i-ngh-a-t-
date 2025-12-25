@@ -279,15 +279,15 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
          {/* Right Side: Question */}
          <div className="w-full md:w-1/2 bg-white dark:bg-gray-800 p-8 flex flex-col relative">
             <div className="flex justify-between items-center mb-6">
-                <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm font-bold">Câu {currentQIndex + 1}/{questions.length}</span>
+                <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-3 py-1 rounded-full text-sm font-bold border border-yellow-200 dark:border-yellow-700">Câu {currentQIndex + 1}/{questions.length}</span>
                 <div className="flex flex-col space-y-1">
                    <div className="text-xs font-bold text-gray-500 uppercase">Hướng dẫn:</div>
                    <div className="flex flex-wrap gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">1</span>A</span>
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">2</span>B</span>
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">3</span>C</span>
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">4</span>D</span>
-                     <span className="flex items-center bg-primary-100 text-primary-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-primary-500 text-white rounded-full flex items-center justify-center mr-1 text-[10px]">5</span>Nộp/Tiếp</span>
+                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">1</span>A</span>
+                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">2</span>B</span>
+                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">3</span>C</span>
+                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">4</span>D</span>
+                     <span className="flex items-center bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-700"><span className="w-4 h-4 bg-yellow-500 text-black rounded-full flex items-center justify-center mr-1 text-[10px] font-bold">5</span>Nộp/Tiếp</span>
                    </div>
                 </div>
             </div>
@@ -303,19 +303,19 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
                         let className = "w-full p-4 rounded-2xl border-2 text-left text-lg font-medium transition-all transform ";
                         
                         if (isSubmitted) {
-                           if (isCorrect) className += "bg-green-100 border-green-500 text-green-800 scale-105";
-                           else if (isSelected) className += "bg-red-100 border-red-500 text-red-800 opacity-80";
-                           else className += "bg-gray-50 border-gray-100 opacity-50";
+                           if (isCorrect) className += "bg-green-100 dark:bg-green-900/40 border-green-500 text-green-800 dark:text-green-100 scale-105";
+                           else if (isSelected) className += "bg-red-100 dark:bg-red-900/40 border-red-500 text-red-800 dark:text-red-100 opacity-80";
+                           else className += "bg-gray-50 dark:bg-gray-700/50 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 opacity-50";
                         } else {
-                           if (isSelected) className += "bg-primary-50 border-primary-500 text-primary-800 scale-105 shadow-md";
-                           else className += "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-gray-200";
+                           if (isSelected) className += "bg-yellow-50 dark:bg-yellow-900/50 border-yellow-500 text-yellow-900 dark:text-yellow-100 scale-105 shadow-md";
+                           else className += "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-200";
                         }
 
                         return (
                            <div key={idx} className={className}>
                               <span className="inline-block w-8 font-bold opacity-50">{String.fromCharCode(65 + idx)}.</span>
                               {opt}
-                              {isSubmitted && isCorrect && <IconCheck className="inline-block ml-2 text-green-600"/>}
+                              {isSubmitted && isCorrect && <IconCheck className="inline-block ml-2 text-green-600 dark:text-green-400"/>}
                            </div>
                         );
                      })}

@@ -140,21 +140,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpda
             <div className="grid grid-cols-3 gap-2">
               <button 
                 onClick={() => onUpdateSettings('viewMode', 'mobile')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'mobile' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'mobile' ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-gray-700 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
               >
                 <IconMobile className="w-6 h-6 mb-1"/>
                 <span className="text-xs font-bold">Điện thoại</span>
               </button>
               <button 
                 onClick={() => onUpdateSettings('viewMode', 'tablet')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'tablet' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'tablet' ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-gray-700 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
               >
                 <IconTablet className="w-6 h-6 mb-1"/>
                 <span className="text-xs font-bold">Tablet</span>
               </button>
               <button 
                 onClick={() => onUpdateSettings('viewMode', 'desktop')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'desktop' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.viewMode === 'desktop' ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-gray-700 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
               >
                 <IconLaptop className="w-6 h-6 mb-1"/>
                 <span className="text-xs font-bold">Máy tính</span>
@@ -168,7 +168,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpda
             <div className="grid grid-cols-3 gap-2">
               <button 
                 onClick={() => onUpdateSettings('themeMode', 'light')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.themeMode === 'light' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.themeMode === 'light' ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-gray-700 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
               >
                 <IconSun className="w-6 h-6 mb-1"/>
                 <span className="text-xs font-bold">Sáng</span>
@@ -182,7 +182,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpda
               </button>
               <button 
                 onClick={() => onUpdateSettings('themeMode', 'system')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.themeMode === 'system' ? 'border-brand-500 bg-gray-100 text-brand-700' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition ${settings.themeMode === 'system' ? 'border-brand-500 bg-gray-100 text-brand-700 dark:bg-gray-700 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-400'}`}
               >
                 <IconLaptop className="w-6 h-6 mb-1"/>
                 <span className="text-xs font-bold">Hệ thống</span>
@@ -198,7 +198,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpda
                 <button
                   key={bg.id}
                   onClick={() => onUpdateSettings('background', bg.id)}
-                  className={`relative w-10 h-10 rounded-full flex-shrink-0 border-2 transition transform hover:scale-110 ${settings.background === bg.id ? 'border-brand-500 ring-2 ring-brand-200' : 'border-gray-200'}`}
+                  className={`relative w-10 h-10 rounded-full flex-shrink-0 border-2 transition transform hover:scale-110 ${settings.background === bg.id ? 'border-brand-500 ring-2 ring-brand-200 dark:ring-brand-500' : 'border-gray-200'}`}
                   style={{ backgroundColor: bg.color }}
                   title={bg.name}
                 >
@@ -216,13 +216,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpda
               <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
                 <button 
                   onClick={() => onUpdateSettings('fontSize', 'normal')}
-                  className={`px-3 py-1 text-sm rounded-md transition ${settings.fontSize === 'normal' ? 'bg-white dark:bg-gray-600 text-brand-600 shadow-sm font-bold' : 'text-gray-500 dark:text-gray-400'}`}
+                  className={`px-3 py-1 text-sm rounded-md transition ${settings.fontSize === 'normal' ? 'bg-white dark:bg-gray-600 text-brand-600 dark:text-white shadow-sm font-bold' : 'text-gray-500 dark:text-gray-400'}`}
                 >
                   Vừa
                 </button>
                 <button 
                   onClick={() => onUpdateSettings('fontSize', 'large')}
-                  className={`px-3 py-1 text-sm rounded-md transition ${settings.fontSize === 'large' ? 'bg-white dark:bg-gray-600 text-brand-600 shadow-sm font-bold' : 'text-gray-500 dark:text-gray-400'}`}
+                  className={`px-3 py-1 text-sm rounded-md transition ${settings.fontSize === 'large' ? 'bg-white dark:bg-gray-600 text-brand-600 dark:text-white shadow-sm font-bold' : 'text-gray-500 dark:text-gray-400'}`}
                 >
                   Lớn
                 </button>
@@ -354,7 +354,7 @@ const ReadingModule = ({ onLookup, isLookupMode, setLookupMode, grade, settings,
               </div>
             )}
             <textarea 
-              className="flex-1 min-h-[300px] p-4 border border-gray-200 dark:border-gray-600 rounded-xl w-full resize-none focus:ring-2 focus:ring-brand-200 outline-none text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-white" 
+              className="flex-1 min-h-[300px] p-4 border border-gray-200 dark:border-gray-600 rounded-xl w-full resize-none focus:ring-2 focus:ring-brand-200 outline-none text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" 
               placeholder="Hoặc gõ/dán văn bản vào đây..." 
               value={text} onChange={(e) => setText(e.target.value)} 
             />
@@ -969,7 +969,7 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX }: { grade:
                    />
                 </div>
                 
-                <div className="flex flex-col gap-2 pt-2">
+                <div className="flex-col gap-2 pt-2 flex">
                     <button onClick={() => handleGen('paragraph')} disabled={loading} className="bg-teal-500 hover:bg-teal-600 text-white py-3 rounded-xl font-bold shadow transition transform active:scale-95 flex justify-center items-center text-sm">
                        {loading && currentMode==='paragraph' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"/> : <IconPen className="w-4 h-4 mr-2"/>}
                        Viết đoạn văn ngắn

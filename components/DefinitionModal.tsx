@@ -46,7 +46,7 @@ const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoa
 
       <div 
         className={`
-          bg-white shadow-2xl border-brand-200 overflow-hidden 
+          bg-white dark:bg-gray-800 shadow-2xl border-brand-200 dark:border-gray-700 overflow-hidden 
           ${isMobile ? 'w-full rounded-t-2xl animate-slide-up border-t-2 relative z-10 max-h-[80vh] flex flex-col' : 'rounded-2xl border-2 w-80 animate-fade-in-up'}
         `}
         style={{ animationDuration: '0.3s' }}
@@ -66,27 +66,27 @@ const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoa
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
                <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin"></div>
-               <p className="text-gray-500 text-sm font-medium">Đang hỏi thầy giáo AI...</p>
+               <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Đang hỏi thầy giáo AI...</p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Definition */}
               <div>
-                <p className="text-gray-700 text-lg leading-relaxed">
+                <p className="text-gray-700 dark:text-gray-200 text-lg leading-relaxed">
                   <span className="text-2xl mr-2 align-middle">📖</span>
                   {data?.definition}
                 </p>
               </div>
 
               {/* Example */}
-              <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
-                <p className="text-yellow-800 italic text-base font-medium">
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-xl border border-yellow-100 dark:border-yellow-800">
+                <p className="text-yellow-800 dark:text-yellow-100 italic text-base font-medium">
                   " {data?.exampleSentence} "
                 </p>
               </div>
 
               {/* Illustration */}
-              <div className="aspect-video w-full rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center relative shadow-inner">
+              <div className="aspect-video w-full rounded-xl bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center relative shadow-inner">
                 {imageUrl ? (
                   <img 
                     src={imageUrl} 
@@ -95,10 +95,10 @@ const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoa
                     onError={onImageError}
                   />
                 ) : (
-                   <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                   <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-700">
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="w-6 h-6 border-2 border-gray-300 border-t-brand-500 rounded-full animate-spin"></div>
-                        <span className="text-xs text-gray-400">Đang tìm ảnh...</span>
+                        <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-500 border-t-brand-500 rounded-full animate-spin"></div>
+                        <span className="text-xs text-gray-400 dark:text-gray-400">Đang tìm ảnh...</span>
                       </div>
                    </div>
                 )}
