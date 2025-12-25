@@ -1,24 +1,36 @@
+export type ModuleType = 'READING' | 'STORY' | 'EXERCISE' | 'WRITING';
+
+export type GradeLevel = 1 | 2 | 3 | 4 | 5;
+
 export interface DefinitionData {
   word: string;
   definition: string;
   exampleSentence: string;
-  imagePrompt?: string; // Used internally to generate the image
+  imagePrompt?: string;
 }
 
-export interface GeneratedContent {
-  imageUrl: string | null;
+export interface QuizQuestion {
+  id: number;
+  question: string;
+  options: string[];
+  correctAnswer: number; // Index of correct option (0-3)
+  explanation: string;
+}
+
+export interface WritingGuide {
+  outline: string;
+  sampleText?: string;
+  tips: string;
+}
+
+export interface SearchResult {
+  title: string;
+  uri: string;
 }
 
 export enum AppState {
   IDLE,
-  PROCESSING_OCR,
-  PROCESSING_DEFINITION,
-  READY
-}
-
-export interface HistoryItem {
-  id: string;
-  word: string;
-  definition: string;
-  timestamp: number;
+  PROCESSING,
+  READY,
+  ERROR
 }

@@ -8,9 +8,10 @@ interface DefinitionModalProps {
   isLoading: boolean;
   onClose: () => void;
   position: { x: number; y: number } | null;
+  onImageError?: () => void;
 }
 
-const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoading, onClose, position }) => {
+const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoading, onClose, position, onImageError }) => {
   const [isMobile, setIsMobile] = useState(false);
 
   // Check for mobile screen size
@@ -87,17 +88,24 @@ const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoa
               {/* Illustration */}
               <div className="aspect-video w-full rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center relative shadow-inner">
                 {imageUrl ? (
-                  <img src={imageUrl} alt={data?.word} className="w-full h-full object-cover animate-fade-in" />
+                  <img 
+                    src={imageUrl} 
+                    alt={data?.word} 
+                    className="w-full h-full object-cover animate-fade-in" 
+                    onError={onImageError}
+                  />
                 ) : (
                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
                       <div className="flex flex-col items-center space-y-2">
                         <div className="w-6 h-6 border-2 border-gray-300 border-t-brand-500 rounded-full animate-spin"></div>
-                        <span className="text-xs text-gray-400">Đang vẽ hình...</span>
+                        <span className="text-xs text-gray-400">Đang tìm ảnh...</span>
                       </div>
                    </div>
                 )}
                 {/* Badge */}
-                <span className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-bold">AI Generated</span>
+                <span className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  {imageUrl && imageUrl.startsWith('data:') ? 'AI Generated' : 'Google Image'}
+                </span>
               </div>
             </div>
           )}

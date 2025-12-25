@@ -1,5 +1,7 @@
 {
-  "name": "CÙNG EM GIẢI NGHĨA TỪ - Smart Reader",
-  "description": "Ứng dụng hỗ trợ học tập tiểu học: OCR nhận diện chữ từ sách và giải nghĩa từ vựng thông minh kèm hình ảnh minh họa bằng AI.",
-  "requestFramePermissions": []
+  "name": "CÙNG EM HỌC MÔN TIẾNG VIỆT",
+  "description": "Nền tảng học tập tương tác môn Tiếng Việt Tiểu học: Tập đọc, Kể chuyện, Luyện từ và câu, Tập làm văn với sự hỗ trợ của AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }
