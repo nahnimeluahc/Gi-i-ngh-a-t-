@@ -1,25 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
-import { IconX, IconCamera, IconCheck } from './Icons';
+import { IconX, IconCamera, IconCheck, IconRefresh, IconStar } from './Icons';
 import { QuizQuestion } from '../types';
 
 interface SmartGestureModalProps {
   questions: QuizQuestion[];
   onClose: () => void;
   playSFX?: (type: 'click' | 'correct' | 'wrong' | 'victory') => void;
+  onLoadMore?: () => Promise<void>; // Prop function to load more questions
 }
 
-const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClose, playSFX }) => {
+const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClose, playSFX, onLoadMore }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [handLandmarker, setHandLandmarker] = useState<HandLandmarker | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [userAnswers, setUserAnswers] = useState<{[key:number]: number}>({}); // Track correct answers for summary
+  
   const [gestureCount, setGestureCount] = useState<number>(0);
   const [detectedFingerCount, setDetectedFingerCount] = useState<number>(0);
-  
+  const [showSummary, setShowSummary] = useState(false);
+
   // Debounce logic
   const lastGestureTime = useRef<number>(0);
   const stableGestureCount = useRef<number>(0);
@@ -40,7 +46,7 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
             delegate: "GPU"
           },
           runningMode: "VIDEO",
-          numHands: 1
+          numHands: 2 // Enable 2 hands detection to count > 5 fingers
         });
         setHandLandmarker(landmarker);
         setLoading(false);
@@ -87,59 +93,52 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        let fingers = 0;
+        let totalFingers = 0;
 
         if (results.landmarks && results.landmarks.length > 0) {
-          const landmarks = results.landmarks[0];
-          
-          // Draw simple points
-          ctx.fillStyle = "#0ea5e9";
-          for (const point of landmarks) {
-            ctx.beginPath();
-            ctx.arc(point.x * canvas.width, point.y * canvas.height, 4, 0, 2 * Math.PI);
-            ctx.fill();
+          // Iterate through all detected hands
+          for (const landmarks of results.landmarks) {
+              // Draw simple points
+              ctx.fillStyle = "#0ea5e9";
+              for (const point of landmarks) {
+                ctx.beginPath();
+                ctx.arc(point.x * canvas.width, point.y * canvas.height, 4, 0, 2 * Math.PI);
+                ctx.fill();
+              }
+
+              let fingers = 0;
+              // Robust Finger Counting Logic
+              const isFingerExtended = (tipIdx: number, pipIdx: number) => {
+                  const wrist = landmarks[0];
+                  const tip = landmarks[tipIdx];
+                  const pip = landmarks[pipIdx];
+                  const distTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+                  const distPip = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
+                  return distTip > distPip * 1.1;
+              };
+
+              // Note: MediaPipe Hands landmarks are normalized. 
+              // Handedness logic is complex in mirror mode, but simple geometric check works best.
+              // Thumb (4) vs IP (3). Simple Y check usually works for "Hand raised".
+              if (landmarks[4].y < landmarks[3].y) fingers++;
+              if (isFingerExtended(8, 6)) fingers++;
+              if (isFingerExtended(12, 10)) fingers++;
+              if (isFingerExtended(16, 14)) fingers++;
+              if (isFingerExtended(20, 18)) fingers++;
+
+              totalFingers += fingers;
           }
-
-          // Robust Finger Counting using Distance from Wrist (0)
-          // A finger is extended if the Tip is significantly further from the Wrist than the PIP joint.
-          const isFingerExtended = (tipIdx: number, pipIdx: number) => {
-              const wrist = landmarks[0];
-              const tip = landmarks[tipIdx];
-              const pip = landmarks[pipIdx];
-              
-              const distTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
-              const distPip = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
-              
-              // Threshold: Tip must be at least 10% further than PIP to be considered "extended/straight"
-              return distTip > distPip * 1.1;
-          };
-
-          // Thumb (4) vs IP (3). Thumb is special.
-          // For vertical hand: Check if Tip Y is above IP Y.
-          // For general extension: Check if Tip is far from Pinky MCP (17) (Open palm).
-          // We combine Y check (for vertical) OR distance check (for spread).
-          // Simple & effective for "kids raising hand": Tip Y < IP Y (Note: Y increases downwards)
-          if (landmarks[4].y < landmarks[3].y) fingers++;
-
-          // Index (8 vs 6)
-          if (isFingerExtended(8, 6)) fingers++;
-          // Middle (12 vs 10)
-          if (isFingerExtended(12, 10)) fingers++;
-          // Ring (16 vs 14)
-          if (isFingerExtended(16, 14)) fingers++;
-          // Pinky (20 vs 18)
-          if (isFingerExtended(20, 18)) fingers++;
           
           // Debug text on canvas
           ctx.fillStyle = "white";
           ctx.font = "bold 30px Quicksand";
           ctx.shadowColor="black";
           ctx.shadowBlur=4;
-          ctx.fillText(`Ngón tay: ${fingers}`, 20, 50);
+          ctx.fillText(`Ngón tay: ${totalFingers}`, 20, 50);
         }
         
-        setDetectedFingerCount(fingers);
-        handleStableGesture(fingers);
+        setDetectedFingerCount(totalFingers);
+        handleStableGesture(totalFingers);
       }
       animationFrameId = requestAnimationFrame(predictWebcam);
     };
@@ -167,7 +166,7 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
 
     // Require ~20 frames (approx 0.7s) of stable gesture to trigger action
     if (stableGestureCount.current > 20 && (now - lastGestureTime.current > 1500)) {
-        if (count >= 1 && count <= 5) {
+        if ((count >= 1 && count <= 5) || count === 6) {
             triggerAction(count);
             lastGestureTime.current = now;
             stableGestureCount.current = 0; // Reset to force re-hold
@@ -176,13 +175,13 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
   };
 
   const triggerAction = (fingers: number) => {
+    if (loadingMore) return; // Prevent action while loading
     setGestureCount(fingers);
     
     // Logic: 1->A, 2->B, 3->C, 4->D
-    if (fingers >= 1 && fingers <= 4) {
-      // Cannot change answer if already submitted
+    if (fingers >= 1 && fingers <= 4 && !showSummary) {
       if (!isSubmitted) {
-        setSelectedOption(fingers - 1); // 0, 1, 2, 3
+        setSelectedOption(fingers - 1); 
         playSFX?.('click');
       }
     } 
@@ -190,29 +189,57 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
     else if (fingers === 5) {
       handleSubmitNextAction();
     }
+    // Logic: 6 -> Load More
+    else if (fingers === 6) {
+      handleTriggerLoadMore();
+    }
+  };
+
+  const handleTriggerLoadMore = async () => {
+     if (onLoadMore) {
+        setLoadingMore(true);
+        playSFX?.('click');
+        try {
+           await onLoadMore();
+           setShowSummary(false); // Hide summary if we were viewing it
+           // Move to the next unanswered question (which is essentially the first new one)
+           // Or just stay at current index + 1
+           if (showSummary) {
+             setCurrentQIndex(prev => prev + 1);
+           }
+        } catch (e) {}
+        setLoadingMore(false);
+     }
   };
 
   useEffect(() => {
      if (gestureCount === 0) return;
-
-     // Reset gesture display after a delay
      const timer = setTimeout(() => setGestureCount(0), 2000);
      return () => clearTimeout(timer);
   }, [gestureCount]);
 
   const handleSubmitNextAction = () => {
+     if (showSummary) {
+        onClose(); // Exit if in summary
+        return;
+     }
+
      setIsSubmitted(prev => {
         if (!prev) {
-           // If not submitted -> Submit
-           // Check if correct immediately for sound
-           if (selectedOption === question.correctAnswer) {
-              playSFX?.('correct');
-           } else {
-              playSFX?.('wrong');
-           }
+           // SUBMIT
+           const isCorrect = selectedOption === question.correctAnswer;
+           if (isCorrect) playSFX?.('correct');
+           else playSFX?.('wrong');
+           
+           // Record result
+           setUserAnswers(prevAnswers => ({
+             ...prevAnswers,
+             [question.id]: selectedOption || -1
+           }));
+
            return true; 
         } else {
-           // If already submitted -> Next Question
+           // NEXT
            setTimeout(() => {
               setCurrentQIndex(current => {
                  if (current < questions.length - 1) {
@@ -221,17 +248,24 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
                     playSFX?.('click');
                     return current + 1;
                  } else {
-                    alert("Chúc mừng! Bạn đã hoàn thành bài tập.");
+                    // FINISHED ALL QUESTIONS -> SHOW SUMMARY
+                    setShowSummary(true);
                     playSFX?.('victory');
-                    onClose();
                     return current;
                  }
               });
-           }, 500); // Small delay to prevent double trigger
+           }, 500); 
            return prev;
         }
      });
   };
+
+  // Calculate stats
+  const correctCount = Object.keys(userAnswers).filter(id => {
+      const q = questions.find(q => q.id === Number(id));
+      return q && userAnswers[Number(id)] === q.correctAnswer;
+  }).length;
+  const totalAnswered = Object.keys(userAnswers).length;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4">
@@ -252,7 +286,7 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover mirror-mode opacity-70"></canvas>
             
             {/* Gesture Feedback Overlay */}
-            <div className="absolute bottom-6 left-6 right-6 bg-black/60 backdrop-blur text-white p-4 rounded-2xl border border-white/10">
+            <div className="absolute bottom-6 left-6 right-6 bg-black/60 backdrop-blur text-white p-4 rounded-2xl border border-white/10 transition-all">
                <p className="text-sm font-bold opacity-70 uppercase tracking-wider mb-1">Trạng thái nhận diện</p>
                <div className="flex items-center space-x-4">
                   <div className="flex items-center">
@@ -263,10 +297,12 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
                   <div className="flex-1">
                      {gestureCount > 0 && (
                         <div className="animate-bounce-slow font-bold text-green-400 flex items-center">
-                           <IconCheck className="w-5 h-5 mr-1"/>
+                           {gestureCount === 6 ? <IconRefresh className="w-5 h-5 mr-1"/> : <IconCheck className="w-5 h-5 mr-1"/>}
                            {gestureCount === 5 
-                              ? (isSubmitted ? "Đã chuyển câu!" : "Đã kiểm tra!") 
-                              : `Đã chọn đáp án ${String.fromCharCode(64 + gestureCount)}`
+                              ? (isSubmitted ? "Đã chuyển/Kết thúc!" : "Đã kiểm tra!") 
+                              : gestureCount === 6
+                                ? "Đang tải thêm câu hỏi..."
+                                : `Đã chọn đáp án ${String.fromCharCode(64 + gestureCount)}`
                            }
                         </div>
                      )}
@@ -276,65 +312,109 @@ const SmartGestureModal: React.FC<SmartGestureModalProps> = ({ questions, onClos
             </div>
          </div>
 
-         {/* Right Side: Question */}
-         <div className="w-full md:w-1/2 bg-white dark:bg-gray-800 p-8 flex flex-col relative">
-            <div className="flex justify-between items-center mb-6">
-                <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-3 py-1 rounded-full text-sm font-bold border border-yellow-200 dark:border-yellow-700">Câu {currentQIndex + 1}/{questions.length}</span>
-                <div className="flex flex-col space-y-1">
-                   <div className="text-xs font-bold text-gray-500 uppercase">Hướng dẫn:</div>
-                   <div className="flex flex-wrap gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">1</span>A</span>
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">2</span>B</span>
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">3</span>C</span>
-                     <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">4</span>D</span>
-                     <span className="flex items-center bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-700"><span className="w-4 h-4 bg-yellow-500 text-black rounded-full flex items-center justify-center mr-1 text-[10px] font-bold">5</span>Nộp/Tiếp</span>
-                   </div>
-                </div>
-            </div>
-
-            {question ? (
-               <div className="flex-1 flex flex-col justify-center">
-                  <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-8 leading-relaxed">{question.question}</h3>
-                  <div className="space-y-4">
-                     {question.options.map((opt, idx) => {
-                        const isSelected = selectedOption === idx;
-                        const isCorrect = question.correctAnswer === idx;
-                        
-                        let className = "w-full p-4 rounded-2xl border-2 text-left text-lg font-medium transition-all transform ";
-                        
-                        if (isSubmitted) {
-                           if (isCorrect) className += "bg-green-100 dark:bg-green-900/40 border-green-500 text-green-800 dark:text-green-100 scale-105";
-                           else if (isSelected) className += "bg-red-100 dark:bg-red-900/40 border-red-500 text-red-800 dark:text-red-100 opacity-80";
-                           else className += "bg-gray-50 dark:bg-gray-700/50 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 opacity-50";
-                        } else {
-                           if (isSelected) className += "bg-yellow-50 dark:bg-yellow-900/50 border-yellow-500 text-yellow-900 dark:text-yellow-100 scale-105 shadow-md";
-                           else className += "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-200";
-                        }
-
-                        return (
-                           <div key={idx} className={className}>
-                              <span className="inline-block w-8 font-bold opacity-50">{String.fromCharCode(65 + idx)}.</span>
-                              {opt}
-                              {isSubmitted && isCorrect && <IconCheck className="inline-block ml-2 text-green-600 dark:text-green-400"/>}
-                           </div>
-                        );
-                     })}
+         {/* Right Side: Content */}
+         <div className="w-full md:w-1/2 bg-white dark:bg-gray-800 p-8 flex flex-col relative overflow-y-auto custom-scrollbar">
+            {showSummary ? (
+               // SUMMARY VIEW
+               <div className="flex-1 flex flex-col justify-center items-center text-center animate-fade-in-up">
+                  <IconStar className="w-20 h-20 text-yellow-500 mb-4 animate-bounce-slow"/>
+                  <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Hoàn thành bài tập!</h3>
+                  <div className="flex items-center space-x-6 my-6">
+                     <div className="text-center">
+                        <span className="block text-4xl font-bold text-green-500">{correctCount}</span>
+                        <span className="text-sm text-gray-500 font-bold">Đúng</span>
+                     </div>
+                     <div className="h-10 w-px bg-gray-300"></div>
+                     <div className="text-center">
+                        <span className="block text-4xl font-bold text-red-500">{totalAnswered - correctCount}</span>
+                        <span className="text-sm text-gray-500 font-bold">Sai</span>
+                     </div>
                   </div>
                   
-                  {isSubmitted && (
-                     <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-100 rounded-xl animate-fade-in-up">
-                        <p className="font-bold mb-1">💡 Giải thích:</p>
-                        <p>{question.explanation}</p>
-                     </div>
-                  )}
+                  <div className="space-y-3 w-full max-w-xs">
+                     <button 
+                        onClick={handleTriggerLoadMore}
+                        disabled={loadingMore}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center"
+                     >
+                        {loadingMore ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"/> : <IconRefresh className="mr-2"/>}
+                        Luyện tập tiếp (Thêm 5 câu)
+                     </button>
+                     <button onClick={onClose} className="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold py-3 px-6 rounded-xl transition">
+                        Thoát
+                     </button>
+                  </div>
                </div>
             ) : (
-               <div className="text-center text-gray-500">Đã hết câu hỏi.</div>
+               // QUESTION VIEW
+               <>
+                  <div className="flex justify-between items-center mb-6">
+                      <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-3 py-1 rounded-full text-sm font-bold border border-yellow-200 dark:border-yellow-700">Câu {currentQIndex + 1}/{questions.length}</span>
+                      
+                      {/* Guide Legend */}
+                      <div className="flex flex-col space-y-1">
+                         <div className="text-xs font-bold text-gray-500 uppercase">Hướng dẫn:</div>
+                         <div className="flex flex-wrap gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
+                           <span className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><span className="w-4 h-4 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center mr-1 text-[10px] text-black">1-4</span>Đáp án</span>
+                           <span className="flex items-center bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-700"><span className="w-4 h-4 bg-yellow-500 text-black rounded-full flex items-center justify-center mr-1 text-[10px] font-bold">5</span>Nộp/Tiếp</span>
+                           <span className="flex items-center bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 px-2 py-1 rounded border border-blue-200 dark:border-blue-700"><span className="w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center mr-1 text-[10px] font-bold">6</span>Thêm câu</span>
+                         </div>
+                      </div>
+                  </div>
+
+                  {question ? (
+                     <div className="flex-1 flex flex-col justify-center">
+                        <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-8 leading-relaxed">{question.question}</h3>
+                        <div className="space-y-4">
+                           {question.options.map((opt, idx) => {
+                              const isSelected = selectedOption === idx;
+                              const isCorrect = question.correctAnswer === idx;
+                              
+                              let className = "w-full p-4 rounded-2xl border-2 text-left text-lg font-medium transition-all transform ";
+                              
+                              if (isSubmitted) {
+                                 if (isCorrect) className += "bg-green-100 dark:bg-green-900/40 border-green-500 text-green-800 dark:text-green-100 scale-105";
+                                 else if (isSelected) className += "bg-red-100 dark:bg-red-900/40 border-red-500 text-red-800 dark:text-red-100 opacity-80";
+                                 else className += "bg-gray-50 dark:bg-gray-700/50 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 opacity-50";
+                              } else {
+                                 if (isSelected) className += "bg-yellow-50 dark:bg-yellow-900/50 border-yellow-500 text-yellow-900 dark:text-yellow-100 scale-105 shadow-md";
+                                 else className += "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-200";
+                              }
+
+                              return (
+                                 <div key={idx} className={className}>
+                                    <span className="inline-block w-8 font-bold opacity-50">{String.fromCharCode(65 + idx)}.</span>
+                                    {opt}
+                                    {isSubmitted && isCorrect && <IconCheck className="inline-block ml-2 text-green-600 dark:text-green-400"/>}
+                                 </div>
+                              );
+                           })}
+                        </div>
+                        
+                        {isSubmitted && (
+                           <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-100 rounded-xl animate-fade-in-up">
+                              <p className="font-bold mb-1">💡 Giải thích:</p>
+                              <p>{question.explanation}</p>
+                           </div>
+                        )}
+                     </div>
+                  ) : (
+                     <div className="text-center text-gray-500">Đã hết câu hỏi.</div>
+                  )}
+
+                  {/* Manual Load More Button for convenience */}
+                  <div className="mt-6 flex justify-center">
+                      <button 
+                        onClick={handleTriggerLoadMore}
+                        disabled={loadingMore}
+                        className="flex items-center text-sm font-bold text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-full transition"
+                      >
+                         {loadingMore ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"/> : <IconRefresh className="w-4 h-4 mr-2"/>}
+                         Tải thêm 5 câu hỏi (hoặc giơ 6 ngón tay)
+                      </button>
+                  </div>
+               </>
             )}
-            
-            <div className="mt-6 text-center text-gray-400 text-sm italic">
-               "Duỗi thẳng 1 ngón tay để chọn A, 2 ngón chọn B..."
-            </div>
          </div>
       </div>
       <style>{`

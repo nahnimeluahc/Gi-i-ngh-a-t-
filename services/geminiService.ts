@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { DefinitionData, QuizQuestion, WritingGuide, SearchResult } from '../types';
+import { DefinitionData, QuizQuestion, WritingGuide, SearchResult, ExtendedReadingData } from '../types';
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
@@ -7,11 +7,31 @@ const getAiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+//HELPER: Clean JSON string from Markdown code blocks
+const cleanAndParseJSON = (text: string | undefined): any => {
+  if (!text) return {};
+  let cleanText = text.trim();
+  // Remove markdown wrapping if present
+  if (cleanText.startsWith('```json')) {
+    cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+  } else if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  }
+  try {
+    return JSON.parse(cleanText);
+  } catch (e) {
+    console.error("JSON Parse Error:", e, "Original text:", text);
+    throw new Error("Lỗi định dạng dữ liệu từ AI.");
+  }
+};
+
 // --- MODULE TTS ---
 
 export const generateSpeech = async (text: string, voice: 'Kore' | 'Puck', region: 'Bắc' | 'Nam'): Promise<string> => {
   const ai = getAiClient();
-  const prompt = `Hãy đọc diễn cảm câu chuyện sau bằng giọng ${region} bộ: ${text}`;
+  // Limit text length for TTS to avoid timeout or errors
+  const safeText = text.slice(0, 1000); 
+  const prompt = `Hãy đọc diễn cảm câu chuyện sau bằng giọng ${region} bộ: ${safeText}`;
   
   try {
     const response = await ai.models.generateContent({
@@ -65,30 +85,78 @@ export const searchStoryVideos = async (topic: string): Promise<SearchResult[]> 
   }
 };
 
+// Updated: Use generation for "Real" images to ensure reliability (avoid broken URLs)
 export const searchRealImage = async (keyword: string): Promise<string | null> => {
+  // We utilize the generation model but ask for "Photorealistic" style to simulate a real image search.
+  // This prevents CORS issues and 404s common with direct image searching.
+  return await generateIllustration(`A highly detailed, photorealistic photograph of ${keyword}. Educational textbook style, 4k resolution, clear lighting, no text.`);
+};
+
+// --- MODULE EXTENDED READING ---
+
+export const generateExtendedReading = async (topic: string, grade: number): Promise<ExtendedReadingData> => {
   const ai = getAiClient();
+  
+  // 1. Generate Text Content and Image Keywords
+  const prompt = `Bạn là chuyên gia giáo dục tiểu học. Hãy tìm hoặc viết một bài đọc mở rộng (khoảng 200-300 chữ) về chủ đề "${topic}" cho học sinh Lớp ${grade}.
+  Nội dung cần chính xác, giáo dục, hấp dẫn và phù hợp lứa tuổi.
+  Đồng thời, hãy liệt kê từ 1 đến 4 từ khóa (tiếng Việt hoặc Anh) để tìm hình ảnh minh họa thực tế cho bài đọc này.
+  
+  Trả về JSON:
+  {
+    "title": "Tên bài đọc",
+    "content": "Nội dung bài đọc (dùng Markdown, KHÔNG dùng code block)",
+    "imageKeywords": ["từ khóa 1", "từ khóa 2", ...],
+    "source": "Nguồn thông tin (nếu có)"
+  }`;
+
   try {
-    // Prompt specifically asks for a direct image URL of a real object
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Tìm một đường dẫn ảnh trực tiếp (URL kết thúc bằng .jpg, .png, hoặc .jpeg) minh họa thực tế và rõ nét cho từ: "${keyword}". 
-      Ưu tiên ảnh từ Wikimedia Commons, Pixabay, hoặc các trang web giáo dục công khai.
-      Nếu từ này là khái niệm trừu tượng không có ảnh chụp thực tế, hãy trả về "null".
-      CHỈ TRẢ VỀ DUY NHẤT URL CỦA ẢNH. Không viết thêm lời dẫn.`,
+      contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }],
+        tools: [{ googleSearch: {} }], // Enable grounding to get facts
+        responseMimeType: "application/json",
       },
     });
 
-    const text = response.text?.trim();
-    // Validate if it looks like a URL
-    if (text && text !== "null" && text.length > 10 && text.match(/^http/)) {
-        return text;
+    const result = cleanAndParseJSON(response.text);
+    
+    // Validate result structure
+    if (!result.title || !result.content) {
+        throw new Error("Invalid response structure");
     }
-    return null;
+
+    const keywords: string[] = result.imageKeywords || [];
+    
+    // 2. Parallel Process for Images
+    const imagePromises = keywords.slice(0, 4).map(async (kw) => {
+        try {
+            // Try "Real" style generation first
+            const realUrl = await searchRealImage(kw);
+            if (realUrl) return { url: realUrl, type: 'real' as const, caption: kw };
+            
+            // Fallback to Cartoon style if real fails (unlikely with generation)
+            const aiUrl = await generateIllustration(`Cute colorful illustration for children education: ${kw}`);
+            if (aiUrl) return { url: aiUrl, type: 'ai' as const, caption: kw };
+        } catch (e) {
+            return null;
+        }
+        return null;
+    });
+
+    const images = (await Promise.all(imagePromises)).filter(img => img !== null) as { url: string; type: 'real' | 'ai'; caption: string }[];
+
+    return {
+        title: result.title,
+        content: result.content,
+        images: images,
+        source: result.source
+    };
+
   } catch (error) {
-    console.error("Real Image Search Error:", error);
-    return null;
+    console.error("Extended Reading Error", error);
+    throw new Error("Lỗi tìm kiếm thông tin.");
   }
 };
 
@@ -116,18 +184,11 @@ export const extractTextFromImage = async (base64Image: string): Promise<string>
 export const explainForKids = async (word: string, grade: number): Promise<DefinitionData> => {
   const ai = getAiClient();
   try {
-    // Explicitly requesting tratu.coviet.vn as the primary source for the definition base.
-    const prompt = `Bạn là từ điển Tiếng Việt thông minh dành cho trẻ em.
-    Nhiệm vụ: Giải thích từ "${word}" cho học sinh Lớp ${grade}.
-    
-    YÊU CẦU QUAN TRỌNG: 
-    1. Hãy tham khảo định nghĩa chuẩn của từ này trên "Từ điển Lạc Việt" (tratu.coviet.vn) để đảm bảo sự chính xác về nghĩa gốc.
-    2. Sau khi có nghĩa gốc, hãy diễn giải lại (paraphrase) bằng ngôn ngữ thật đơn giản, gần gũi, dễ hiểu với trẻ em lớp ${grade}.
-    3. Đặt 1 câu ví dụ hay, phù hợp ngữ cảnh.
-    4. Tạo prompt tiếng Anh để vẽ tranh minh họa cho từ này (đơn giản, hoạt hình).`;
+    const prompt = `Giải thích từ "${word}" cho học sinh Lớp ${grade}. 
+    Yêu cầu: Nghĩa đơn giản, dễ hiểu. Kèm 1 câu ví dụ.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-flash-preview", // Fast model
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -136,17 +197,51 @@ export const explainForKids = async (word: string, grade: number): Promise<Defin
           properties: {
             word: { type: Type.STRING },
             definition: { type: Type.STRING },
-            exampleSentence: { type: Type.STRING },
-            imagePrompt: { type: Type.STRING },
+            exampleSentence: { type: Type.STRING }
           },
-          required: ["word", "definition", "exampleSentence", "imagePrompt"],
-        },
+          required: ["word", "definition", "exampleSentence"]
+        }
       },
     });
-    return JSON.parse(response.text || "{}") as DefinitionData;
+    return cleanAndParseJSON(response.text) as DefinitionData;
   } catch (error) {
     console.error("Definition Error:", error);
     throw error;
+  }
+};
+
+// NEW: Batch analyze vocabulary for caching
+export const analyzeVocabularyContext = async (text: string, grade: number): Promise<DefinitionData[]> => {
+  const ai = getAiClient();
+  try {
+    const prompt = `Phân tích văn bản dưới đây và trích xuất danh sách các từ vựng (từ khó, từ hay, từ láy, thành ngữ) quan trọng phù hợp với học sinh Lớp ${grade}.
+    Với mỗi từ, hãy cung cấp định nghĩa đơn giản và một câu ví dụ.
+    
+    Văn bản: """${text}"""`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview", // Fast & Cost-effective for large context
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              definition: { type: Type.STRING },
+              exampleSentence: { type: Type.STRING }
+            },
+            required: ["word", "definition", "exampleSentence"]
+          }
+        }
+      },
+    });
+    return cleanAndParseJSON(response.text) as DefinitionData[];
+  } catch (error) {
+    console.error("Batch Vocabulary Analysis Error:", error);
+    return [];
   }
 };
 
@@ -196,13 +291,9 @@ export const generateStoryScenes = async (story: string): Promise<string[]> => {
       Câu chuyện: """${story}"""`,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        }
       }
     });
-    return JSON.parse(response.text || "[]") as string[];
+    return cleanAndParseJSON(response.text) as string[];
   } catch (error) {
     console.error("Story Scenes Error", error);
     return [];
@@ -249,7 +340,7 @@ export const generateQuiz = async (topic: string, grade: number, base64Image?: s
         },
       },
     });
-    return JSON.parse(response.text || "[]") as QuizQuestion[];
+    return cleanAndParseJSON(response.text) as QuizQuestion[];
   } catch (error) {
     console.error("Quiz Error", error);
     throw new Error("Lỗi tạo bài tập.");
@@ -325,7 +416,7 @@ export const generateWritingSupport = async (topic: string, type: string, grade:
         },
       },
     });
-    return JSON.parse(response.text || "{}") as WritingGuide;
+    return cleanAndParseJSON(response.text) as WritingGuide;
   } catch (error) {
     console.error("Writing Error", error);
     throw new Error("Lỗi tạo dàn ý.");

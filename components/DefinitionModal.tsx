@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { DefinitionData } from '../types';
-import { IconX } from './Icons';
+import { IconX, IconHeart, IconSpeaker } from './Icons';
 
 interface DefinitionModalProps {
   data: DefinitionData | null;
@@ -9,9 +9,12 @@ interface DefinitionModalProps {
   onClose: () => void;
   position: { x: number; y: number } | null;
   onImageError?: () => void;
+  onSave?: (data: DefinitionData) => void;
+  isSaved?: boolean;
+  onSpeak?: (text: string) => void;
 }
 
-const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoading, onClose, position, onImageError }) => {
+const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoading, onClose, position, onImageError, onSave, isSaved, onSpeak }) => {
   const [isMobile, setIsMobile] = useState(false);
 
   // Check for mobile screen size
@@ -56,9 +59,29 @@ const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoa
           <h3 className="font-bold text-lg capitalize flex items-center">
             {isLoading ? 'Đang tra từ...' : data?.word}
           </h3>
-          <button onClick={onClose} className="hover:bg-brand-600 rounded-full p-1 transition-colors">
-            <IconX className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-1">
+            {!isLoading && data && onSpeak && (
+                <button 
+                  onClick={() => onSpeak(`${data.word}. ${data.definition}. Ví dụ: ${data.exampleSentence}`)} 
+                  className="p-2 rounded-full hover:bg-white/20 text-white transition-colors"
+                  title="Đọc từ này"
+                >
+                  <IconSpeaker className="w-5 h-5" />
+                </button>
+            )}
+            {!isLoading && data && onSave && (
+              <button 
+                onClick={() => onSave(data)} 
+                className={`p-2 rounded-full transition-colors ${isSaved ? 'bg-white/20 text-red-200 hover:text-red-100 hover:bg-white/30' : 'hover:bg-white/20 text-white'}`}
+                title={isSaved ? "Bỏ lưu" : "Lưu vào sổ tay"}
+              >
+                <IconHeart className="w-5 h-5" filled={isSaved} />
+              </button>
+            )}
+            <button onClick={onClose} className="hover:bg-brand-600 rounded-full p-2 transition-colors">
+              <IconX className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content - Scrollable on mobile if content is long */}
@@ -102,10 +125,13 @@ const DefinitionModal: React.FC<DefinitionModalProps> = ({ data, imageUrl, isLoa
                       </div>
                    </div>
                 )}
-                {/* Badge */}
-                <span className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                  {imageUrl && imageUrl.startsWith('data:') ? 'AI Generated' : 'Google Image'}
-                </span>
+                
+                {/* Source Badge */}
+                {imageUrl && (
+                  <span className={`absolute bottom-2 right-2 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm flex items-center ${imageUrl.startsWith('data:') ? 'bg-purple-500/80' : 'bg-blue-500/80'}`}>
+                    {imageUrl.startsWith('data:') ? '🎨 AI Vẽ' : '📷 Ảnh thực tế'}
+                  </span>
+                )}
               </div>
             </div>
           )}

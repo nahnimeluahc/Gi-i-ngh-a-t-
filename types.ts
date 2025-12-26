@@ -1,4 +1,5 @@
-export type ModuleType = 'READING' | 'STORY' | 'EXERCISE' | 'WRITING';
+
+export type ModuleType = 'READING' | 'STORY' | 'EXERCISE' | 'WRITING' | 'VOCABULARY' | 'EXTENDED_READING';
 
 export type GradeLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -7,6 +8,7 @@ export interface DefinitionData {
   definition: string;
   exampleSentence: string;
   imagePrompt?: string;
+  cachedImage?: string | null; // Optimization: Cache the image URL
 }
 
 export interface QuizQuestion {
@@ -26,6 +28,49 @@ export interface WritingGuide {
 export interface SearchResult {
   title: string;
   uri: string;
+}
+
+export interface ExtendedReadingData {
+  title: string;
+  content: string;
+  images: { url: string; type: 'real' | 'ai'; caption: string }[];
+  source?: string;
+}
+
+// --- SAVED DATA TYPES ---
+
+export interface SavedStory {
+  id: string;
+  title: string;
+  content: string;
+  date: number;
+  image?: string | null; // Base64 or URL
+}
+
+export interface SavedQuiz {
+  id: string;
+  topic: string;
+  score: number;
+  total: number;
+  date: number;
+  questions: QuizQuestion[]; // Save questions to review later
+  userAnswers: {[key:number]: number}; // Save user choices
+}
+
+export interface SavedWriting {
+  id: string;
+  topic: string;
+  type: string;
+  mode: 'paragraph' | 'outline' | 'essay';
+  content: WritingGuide;
+  date: number;
+}
+
+export interface SavedExtendedReading {
+  id: string;
+  request: string;
+  data: ExtendedReadingData;
+  date: number;
 }
 
 export enum AppState {
