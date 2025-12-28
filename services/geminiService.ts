@@ -1,10 +1,52 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Type, Modality, GenerateContentResponse } from "@google/genai";
 import { DefinitionData, QuizQuestion, WritingGuide, SearchResult, ExtendedReadingData } from '../types';
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
   return new GoogleGenAI({ apiKey });
+};
+
+// Helper: Retry mechanism for 429/Quota errors
+const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 4000): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    // Robust error message extraction (JSON.stringify often misses 'message' property of Error objects)
+    const errorMsg = (error?.message || JSON.stringify(error) || '').toLowerCase();
+    const statusCode = error?.status || error?.code || error?.error?.code;
+    
+    const isRateLimit = 
+        statusCode === 429 || 
+        errorMsg.includes('429') || 
+        errorMsg.includes('quota') || 
+        errorMsg.includes('resource_exhausted') || 
+        errorMsg.includes('too many requests') ||
+        errorMsg.includes('exceeded your current quota');
+
+    if (isRateLimit && retries > 0) {
+      // Add Jitter (Randomness) to prevent thundering herd: 0-2000ms
+      const jitter = Math.floor(Math.random() * 2000);
+      const finalDelay = delay + jitter;
+      
+      console.warn(`API Rate Limit hit (${retries} retries left). Waiting ${finalDelay}ms...`);
+      
+      await new Promise(r => setTimeout(r, finalDelay));
+      // Exponential backoff
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+};
+
+// Helper to format error for UI
+const handleServiceError = (error: any, defaultMsg: string) => {
+    console.error(defaultMsg, error);
+    const msg = (error?.message || '').toLowerCase();
+    if (msg.includes('quota') || msg.includes('429') || msg.includes('resource_exhausted')) {
+        throw new Error("Hệ thống đang bận (hết lượt miễn phí). Vui lòng đợi 30 giây rồi thử lại!");
+    }
+    throw new Error(defaultMsg);
 };
 
 //HELPER: Clean JSON string from Markdown code blocks
@@ -34,7 +76,7 @@ export const generateSpeech = async (text: string, voice: 'Kore' | 'Puck', regio
   const prompt = `Hãy đọc diễn cảm câu chuyện sau bằng giọng ${region} bộ: ${safeText}`;
   
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: prompt }] }],
       config: {
@@ -45,14 +87,13 @@ export const generateSpeech = async (text: string, voice: 'Kore' | 'Puck', regio
           },
         },
       },
-    });
+    }));
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) throw new Error("Không nhận được dữ liệu âm thanh.");
     return base64Audio;
   } catch (error) {
-    console.error("TTS Error:", error);
-    throw error;
+    return handleServiceError(error, "Lỗi tạo giọng đọc.");
   }
 };
 
@@ -61,13 +102,13 @@ export const generateSpeech = async (text: string, voice: 'Kore' | 'Puck', regio
 export const searchStoryVideos = async (topic: string): Promise<SearchResult[]> => {
   const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Tìm 5 video kể chuyện hoặc phim hoạt hình trên YouTube về chủ đề: "${topic}". Trả về danh sách tiêu đề và link video.`,
       config: {
         tools: [{ googleSearch: {} }],
       },
-    });
+    }));
 
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (chunks) {
@@ -111,14 +152,14 @@ export const generateExtendedReading = async (topic: string, grade: number): Pro
   }`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }], // Enable grounding to get facts
         responseMimeType: "application/json",
       },
-    });
+    }));
 
     const result = cleanAndParseJSON(response.text);
     
@@ -155,8 +196,7 @@ export const generateExtendedReading = async (topic: string, grade: number): Pro
     };
 
   } catch (error) {
-    console.error("Extended Reading Error", error);
-    throw new Error("Lỗi tìm kiếm thông tin.");
+    return handleServiceError(error, "Lỗi tìm kiếm thông tin.");
   }
 };
 
@@ -165,7 +205,7 @@ export const generateExtendedReading = async (topic: string, grade: number): Pro
 export const extractTextFromImage = async (base64Image: string): Promise<string> => {
   const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-2.5-flash-image",
       contents: {
         parts: [
@@ -173,11 +213,10 @@ export const extractTextFromImage = async (base64Image: string): Promise<string>
           { text: "Bạn là chuyên gia OCR. Hãy trích xuất toàn bộ văn bản tiếng Việt trong ảnh. Giữ nguyên định dạng đoạn văn. Chỉ trả về văn bản thuần." },
         ],
       },
-    });
+    }));
     return response.text?.trim() || "Không tìm thấy văn bản.";
   } catch (error) {
-    console.error("OCR Error:", error);
-    throw new Error("Không đọc được ảnh.");
+    return handleServiceError(error, "Không đọc được ảnh.");
   }
 };
 
@@ -187,7 +226,7 @@ export const explainForKids = async (word: string, grade: number): Promise<Defin
     const prompt = `Giải thích từ "${word}" cho học sinh Lớp ${grade}. 
     Yêu cầu: Nghĩa đơn giản, dễ hiểu. Kèm 1 câu ví dụ.`;
 
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview", // Fast model
       contents: prompt,
       config: {
@@ -202,11 +241,10 @@ export const explainForKids = async (word: string, grade: number): Promise<Defin
           required: ["word", "definition", "exampleSentence"]
         }
       },
-    });
+    }));
     return cleanAndParseJSON(response.text) as DefinitionData;
   } catch (error) {
-    console.error("Definition Error:", error);
-    throw error;
+    return handleServiceError(error, "Lỗi giải nghĩa từ.");
   }
 };
 
@@ -219,7 +257,8 @@ export const analyzeVocabularyContext = async (text: string, grade: number): Pro
     
     Văn bản: """${text}"""`;
 
-    const response = await ai.models.generateContent({
+    // Use withRetry for batch analysis as it often hits limits
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview", // Fast & Cost-effective for large context
       contents: prompt,
       config: {
@@ -237,10 +276,11 @@ export const analyzeVocabularyContext = async (text: string, grade: number): Pro
           }
         }
       },
-    });
+    }));
     return cleanAndParseJSON(response.text) as DefinitionData[];
   } catch (error) {
-    console.error("Batch Vocabulary Analysis Error:", error);
+    // Suppress error log if it's just a background task failing quietly
+    console.warn("Batch Vocabulary Analysis skipped due to error:", error);
     return [];
   }
 };
@@ -248,10 +288,10 @@ export const analyzeVocabularyContext = async (text: string, grade: number): Pro
 export const generateIllustration = async (prompt: string): Promise<string | null> => {
   const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-2.5-flash-image",
       contents: { parts: [{ text: prompt }] },
-    });
+    }));
     const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     return part ? `data:${part.inlineData.mimeType};base64,${part.inlineData.data}` : null;
   } catch (e) { return null; }
@@ -269,21 +309,20 @@ export const generateStoryFromPrompt = async (topic: string, grade: number, base
   }
 
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: base64Image ? "gemini-2.5-flash-image" : "gemini-3-flash-preview",
       contents: { parts },
-    });
+    }));
     return response.text || "Không thể tạo câu chuyện lúc này.";
   } catch (error) {
-    console.error("Story Error", error);
-    throw new Error("Lỗi tạo truyện.");
+    return handleServiceError(error, "Lỗi tạo truyện.");
   }
 };
 
 export const generateStoryScenes = async (story: string): Promise<string[]> => {
   const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Dựa trên câu chuyện sau, hãy tạo ra 4 câu mô tả ngắn gọn (bằng tiếng Anh) về 4 cảnh quan trọng nhất trong truyện để vẽ tranh minh họa cho trẻ em.
       Mô tả cần chi tiết về nhân vật, hành động và bối cảnh.
@@ -292,7 +331,7 @@ export const generateStoryScenes = async (story: string): Promise<string[]> => {
       config: {
         responseMimeType: "application/json",
       }
-    });
+    }));
     return cleanAndParseJSON(response.text) as string[];
   } catch (error) {
     console.error("Story Scenes Error", error);
@@ -313,37 +352,44 @@ export const generateQuiz = async (topic: string, grade: number, base64Image?: s
   
   prompt += `Độ khó phù hợp với chương trình Tiếng Việt lớp ${grade}. Output JSON format: Array of objects.`;
 
+  const isImageMode = !!base64Image;
   const parts: any[] = [{ text: prompt }];
-  if (base64Image) {
+  
+  if (isImageMode) {
     parts.unshift({ inlineData: { mimeType: "image/jpeg", data: base64Image } });
+    // Image model doesn't support schema well, so we enforce JSON in prompt
+    parts[parts.length - 1].text += " \nTRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON THUẦN (KHÔNG CÓ MARKDOWN CODE BLOCK).";
+  }
+
+  // Config: strict schema for text only, loose for image
+  const config: any = {};
+  if (!isImageMode) {
+    config.responseMimeType = "application/json";
+    config.responseSchema = {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.INTEGER },
+          question: { type: Type.STRING },
+          options: { type: Type.ARRAY, items: { type: Type.STRING } }, // 4 options
+          correctAnswer: { type: Type.INTEGER, description: "Index 0-3" },
+          explanation: { type: Type.STRING },
+        },
+        required: ["id", "question", "options", "correctAnswer", "explanation"],
+      },
+    };
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: base64Image ? "gemini-2.5-flash-image" : "gemini-3-flash-preview",
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
+      model: isImageMode ? "gemini-2.5-flash-image" : "gemini-3-flash-preview",
       contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.INTEGER },
-              question: { type: Type.STRING },
-              options: { type: Type.ARRAY, items: { type: Type.STRING } }, // 4 options
-              correctAnswer: { type: Type.INTEGER, description: "Index 0-3" },
-              explanation: { type: Type.STRING },
-            },
-            required: ["id", "question", "options", "correctAnswer", "explanation"],
-          },
-        },
-      },
-    });
+      config: config,
+    }));
     return cleanAndParseJSON(response.text) as QuizQuestion[];
   } catch (error) {
-    console.error("Quiz Error", error);
-    throw new Error("Lỗi tạo bài tập.");
+    return handleServiceError(error, "Lỗi tạo bài tập.");
   }
 };
 
@@ -382,43 +428,49 @@ export const generateWritingSupport = async (topic: string, type: string, grade:
       `;
   }
   
-  const prompt = `Vai trò: Giáo viên Tiếng Việt tiểu học dạy Lớp ${grade}.
+  let prompt = `Vai trò: Giáo viên Tiếng Việt tiểu học dạy Lớp ${grade}.
   Đề bài: ${topic} (${type}).
   ${base64Image ? "QUAN TRỌNG: Hãy tham khảo hình ảnh đính kèm (tranh minh họa, dàn ý mẫu, hoặc đề bài trong sách) để viết nội dung bám sát nhất." : ""}
   
   ${userInstruction}
   
   Hãy trả về JSON gồm:
-  - outline: (String) Nội dung dàn ý theo yêu cầu trên.
-  - sampleText: (String) Nội dung văn bản mẫu theo yêu cầu trên.
+  - outline: (String) Nội dung dàn ý theo yêu cầu trên. TUYỆT ĐỐI KHÔNG dùng định dạng Markdown (như **, ##, *), chỉ dùng văn bản thuần.
+  - sampleText: (String) Nội dung văn bản mẫu theo yêu cầu trên. TUYỆT ĐỐI KHÔNG dùng định dạng Markdown (như **, ##, *), chỉ dùng văn bản thuần.
   - tips: (String) Lời khuyên, từ ngữ hay nên dùng cho đề bài này.
   `;
 
+  const isImageMode = !!base64Image;
   const parts: any[] = [{ text: prompt }];
-  if (base64Image) {
+  
+  if (isImageMode) {
     parts.unshift({ inlineData: { mimeType: "image/jpeg", data: base64Image } });
+    parts[parts.length - 1].text += " \nTRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON THUẦN (KHÔNG CÓ MARKDOWN CODE BLOCK).";
+  }
+
+  // Config: strict schema for text only, loose for image
+  const config: any = {};
+  if (!isImageMode) {
+    config.responseMimeType = "application/json";
+    config.responseSchema = {
+      type: Type.OBJECT,
+      properties: {
+        outline: { type: Type.STRING },
+        sampleText: { type: Type.STRING },
+        tips: { type: Type.STRING },
+      },
+      required: ["outline", "sampleText", "tips"],
+    };
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: base64Image ? "gemini-2.5-flash-image" : "gemini-3-flash-preview",
+    const response: GenerateContentResponse = await withRetry(() => ai.models.generateContent({
+      model: isImageMode ? "gemini-2.5-flash-image" : "gemini-3-flash-preview",
       contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            outline: { type: Type.STRING },
-            sampleText: { type: Type.STRING },
-            tips: { type: Type.STRING },
-          },
-          required: ["outline", "sampleText", "tips"],
-        },
-      },
-    });
+      config: config,
+    }));
     return cleanAndParseJSON(response.text) as WritingGuide;
   } catch (error) {
-    console.error("Writing Error", error);
-    throw new Error("Lỗi tạo dàn ý.");
+    return handleServiceError(error, "Lỗi tạo dàn ý.");
   }
 };

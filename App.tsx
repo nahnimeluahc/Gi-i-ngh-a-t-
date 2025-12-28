@@ -342,8 +342,8 @@ const ExtendedReadingModule = ({ grade, settings, playSFX, onLookup, onSpeak, sa
       const res = await generateExtendedReading(topic, grade);
       setResult(res);
       playSFX('victory');
-    } catch (e) {
-      alert("Lỗi tìm kiếm thông tin. Vui lòng thử lại!");
+    } catch (e: any) {
+      alert(e.message || "Lỗi tìm kiếm thông tin. Vui lòng thử lại!");
     }
     setLoading(false);
   };
@@ -605,7 +605,6 @@ const VocabularyModule = ({ savedWords, onRemove, onView, settings, playSFX }: {
   );
 };
 
-// ... (No changes to ReadingModule)
 const ReadingModule = ({ onLookup, isLookupMode, setLookupMode, grade, settings, playSFX, onBatchCache, savedWords, onRemoveWord, onViewWord }: any) => {
   const [text, setText] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -631,7 +630,7 @@ const ReadingModule = ({ onLookup, isLookupMode, setLookupMode, grade, settings,
       if (res && res.length > 20) {
          triggerBatchAnalysis(res);
       }
-    } catch(e) { alert("Lỗi đọc ảnh"); }
+    } catch(e: any) { alert(e.message || "Lỗi đọc ảnh"); }
     setIsLoading(false);
   };
 
@@ -847,7 +846,7 @@ const StoryModule = ({ grade, settings, playSFX, onLookup, savedStories, onSave,
       playSFX('correct');
       const videoRes = await searchStoryVideos(topic || "Kể chuyện thiếu nhi");
       setVideos(videoRes);
-    } catch(e) { alert("Lỗi tạo truyện"); }
+    } catch(e: any) { alert(e.message || "Lỗi tạo truyện"); }
     setLoading(false);
   };
 
@@ -870,7 +869,7 @@ const StoryModule = ({ grade, settings, playSFX, onLookup, savedStories, onSave,
       playSFX('correct');
       const keywords = contentToRead.split(' ').slice(0, 10).join(' ');
       searchStoryVideos(keywords).then(setVideos);
-    } catch(e) { alert("Lỗi xử lý nội dung"); }
+    } catch(e: any) { alert(e.message || "Lỗi xử lý nội dung"); }
     setLoading(false);
   };
 
@@ -900,8 +899,8 @@ const StoryModule = ({ grade, settings, playSFX, onLookup, savedStories, onSave,
       sourceRef.current = source;
       source.start();
       setIsPlaying(true);
-    } catch(e) {
-      alert("Lỗi khi đọc truyện. Vui lòng thử lại.");
+    } catch(e: any) {
+      alert(e.message || "Lỗi khi đọc truyện. Vui lòng thử lại.");
     }
     setTtsLoading(false);
   };
@@ -919,8 +918,8 @@ const StoryModule = ({ grade, settings, playSFX, onLookup, savedStories, onSave,
       const validImages = results.filter(img => img !== null) as string[];
       setStoryImages(validImages);
       if(validImages.length > 0) playSFX('victory');
-    } catch (e) {
-      alert("Lỗi tạo tranh minh họa. Vui lòng thử lại.");
+    } catch (e: any) {
+      alert(e.message || "Lỗi tạo tranh minh họa. Vui lòng thử lại.");
     }
     setIsGenImages(false);
   };
@@ -1169,7 +1168,7 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
        const qs = await generateQuiz(topic, grade, imgB64 || undefined, contextText || undefined);
        setQuestions(qs);
        playSFX('victory');
-    } catch(e) { alert("Lỗi tạo câu hỏi"); }
+    } catch(e: any) { alert(e.message || "Lỗi tạo câu hỏi"); }
     setLoading(false);
   };
 
@@ -1188,9 +1187,9 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
        setQuestions(prev => [...prev, ...fixedQs]);
        setSubmitted(false);
        playSFX('correct'); 
-     } catch(e) {
+     } catch(e: any) {
        console.error(e);
-       alert("Lỗi tải thêm câu hỏi");
+       alert(e.message || "Lỗi tải thêm câu hỏi");
      }
      setLoadingMore(false);
   };
@@ -1267,13 +1266,11 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
           <>
           {/* Settings Panel */}
           <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-brand-100 dark:border-gray-700 mb-6 space-y-4 transition-colors">
-             {/* ... (Existing Settings UI) ... */}
              <div className="flex justify-between items-center">
                 <h3 className="font-bold text-lg text-brand-700 dark:text-brand-400 flex items-center"><IconCheck className="mr-2"/> Thiết lập bài tập</h3>
                 <span className="text-xs bg-brand-100 dark:bg-gray-700 text-brand-600 dark:text-brand-300 px-2 py-1 rounded font-bold">Lớp {grade}</span>
              </div>
 
-             {/* Topic Input */}
              <div className="relative z-0">
                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Chủ đề (Bắt buộc)</label>
                <input 
@@ -1281,7 +1278,6 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
                  className={`w-full p-3 rounded-xl border border-gray-200 dark:border-gray-600 outline-none focus:ring-2 focus:ring-brand-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition ${textSizeClass}`}
                  placeholder={suggestedTopics.length > 0 ? `Ví dụ: ${suggestedTopics[0]}...` : `Ví dụ: Từ láy, Danh từ...`}
                />
-               {/* Suggested Tags */}
                {suggestedTopics.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                      <span className="text-xs text-gray-400 font-bold self-center mr-1">Gợi ý:</span>
@@ -1299,7 +1295,6 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Text Paste Area */}
                 <div className="flex flex-col relative z-0">
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Dán văn bản / đề bài (Tùy chọn)</label>
                   <textarea 
@@ -1310,7 +1305,6 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
                   />
                 </div>
 
-                {/* File Upload Area */}
                 <div className="flex flex-col">
                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 flex justify-between">
                       Ảnh bài tập (Tùy chọn)
@@ -1362,7 +1356,8 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
              {questions.map((q, idx) => (
                 <div key={q.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-brand-50 dark:border-gray-700 animate-fade-in-up transition-colors" style={{animationDelay: `${idx * 100}ms`}}>
                    <div className="flex items-start justify-between mb-4">
-                      <p className={`font-bold text-brand-800 dark:text-gray-200 ${questionSizeClass} flex-1`}>
+                      {/* FIX: Changed text-brand-800 to text-gray-900 and dark:text-gray-200 to dark:text-white for better contrast */}
+                      <p className={`font-bold text-gray-900 dark:text-white ${questionSizeClass} flex-1`}>
                         <span className="bg-brand-100 dark:bg-gray-700 text-brand-600 dark:text-brand-400 px-2 py-1 rounded mr-2 text-base">Câu {idx+1}</span> 
                         {q.question}
                       </p>
@@ -1417,10 +1412,9 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
                 </div>
              ))}
              
-             {/* Summary Box when submitted */}
+             {/* Summary Box ... */}
              {submitted && (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-2 border-primary-500 flex flex-col items-center justify-center animate-bounce-slow relative">
-                   {/* SAVE BUTTON FOR QUIZ */}
                    <button 
                       onClick={handleSaveResult} 
                       className="absolute top-4 right-4 p-2 rounded-full bg-red-50 text-red-500 hover:bg-red-100 shadow transition"
@@ -1456,7 +1450,7 @@ const QuizModule = ({ grade, settings, suggestedTopics = [], playSFX, onSpeak, s
           </>
           )}
        </div>
-       
+       {/* ... Footer actions ... */}
        {questions.length > 0 && !submitted && activeTab === 'create' && (
          <div className="sticky bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-t dark:border-gray-700 z-30 flex justify-center w-full gap-4">
             <button onClick={handleSubmit} className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg border-4 border-white flex-1 max-w-xs">
@@ -1493,7 +1487,7 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX, onLookup, 
 
   const textSizeClass = settings.fontSize === 'large' ? 'text-lg leading-relaxed' : 'text-base leading-relaxed';
 
-  // Update type if writingTypes changes
+  // ... (Hooks and Handlers same as before) ...
   useEffect(() => {
     if (writingTypes.length > 0 && !writingTypes.includes(type)) {
       setType(writingTypes[0]);
@@ -1509,8 +1503,8 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX, onLookup, 
       const res = await generateWritingSupport(topic || "Viết bài văn theo ảnh", type, grade, mode, imgB64 || undefined);
       setResult(res);
       playSFX('victory');
-    } catch (e) {
-      alert("Lỗi tạo bài văn mẫu.");
+    } catch (e: any) {
+      alert(e.message || "Lỗi tạo bài văn mẫu.");
     }
     setLoading(false);
   };
@@ -1552,6 +1546,7 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX, onLookup, 
 
   return (
     <div className="grid grid-cols-1 gap-6 pb-20">
+      {/* ... Tabs and Saved list (No change) ... */}
       <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-4">
             <button onClick={() => {setActiveTab('create'); playSFX('click');}} className={`pb-2 px-4 font-bold text-lg transition border-b-2 flex items-center ${activeTab === 'create' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-400'}`}>
                 <IconPen className="w-5 h-5 mr-2"/> Tập làm văn
@@ -1707,21 +1702,23 @@ const WritingModule = ({ grade, settings, writingTypes = [], playSFX, onLookup, 
                      </div>
                   </div>
 
+                  {/* FIX: Removed monospace font, used font-sans for clean look */}
                   {result.outline && mode === 'outline' && (
                      <div 
                        onMouseUp={handleMouseUp}
-                       className={`prose ${settings.fontSize === 'large' ? 'prose-xl' : 'prose-lg'} max-w-none text-gray-800 dark:text-gray-200 mb-8 selection:bg-yellow-200 selection:text-black cursor-text`}
+                       className={`prose ${settings.fontSize === 'large' ? 'prose-xl' : 'prose-lg'} max-w-none text-gray-800 dark:text-gray-200 mb-8 selection:bg-yellow-200 selection:text-black cursor-text font-sans`}
                      >
-                        <div className="whitespace-pre-wrap font-medium" style={{fontFamily: '"Courier Prime", monospace'}}>{result.outline}</div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{result.outline}</div>
                      </div>
                   )}
 
+                  {/* FIX: Removed font-serif, used default font-sans */}
                   {(mode === 'paragraph' || mode === 'essay') && result.sampleText && (
                      <div 
                        onMouseUp={handleMouseUp}
-                       className={`prose ${settings.fontSize === 'large' ? 'prose-xl' : 'prose-lg'} max-w-none text-gray-800 dark:text-gray-200 mb-8 selection:bg-yellow-200 selection:text-black cursor-text`}
+                       className={`prose ${settings.fontSize === 'large' ? 'prose-xl' : 'prose-lg'} max-w-none text-gray-800 dark:text-gray-200 mb-8 selection:bg-yellow-200 selection:text-black cursor-text font-sans`}
                      >
-                        <div className="whitespace-pre-wrap font-medium leading-relaxed font-serif">{result.sampleText}</div>
+                        <div className="whitespace-pre-wrap leading-relaxed text-justify">{result.sampleText}</div>
                      </div>
                   )}
 
